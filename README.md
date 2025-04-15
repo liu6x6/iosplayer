@@ -9,6 +9,7 @@ a small stream play using ffmpeg and SDL2, which i use it to test the iOS h264 s
 ./iosplayer -p 10001  # play the tcp stream on 10001
 ```
 
+# build
 ## mac & linux
 * run ./autogen.sh
 * and then make && make install
@@ -16,3 +17,11 @@ a small stream play using ffmpeg and SDL2, which i use it to test the iOS h264 s
 ## windows
 * install msys2 first
 * pacman -S mingw-w64-ucrt-x86_64-ffmpeg
+
+
+## use gcc to build
+```
+gcc -o iosplayer iosplayer.c \
+    `pkg-config --cflags --libs libavformat libavcodec libavutil libswscale sdl2`
+
+```
