@@ -1,6 +1,8 @@
 # iosplayer
 [中文文档](README_CN.md)
+
 this project get inspiration from scrcpy.
+
 a small stream player using ffmpeg and SDL2, which i use it to test the iOS h264 stream. support Mac/linux/windows.
 need wotk with [WebDriverAgent](https://github.com/liu6x6/WebDriverAgent)
 
