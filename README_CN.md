@@ -1,15 +1,13 @@
 # iosplayer
-[中文文档](README_CN.md)
-this project get inspiration from scrcpy
-a small stream player using ffmpeg and SDL2, which i use it to test the iOS h264 stream. support Mac/linux/windows
-need wotk with (WebDriverAgent)[https://github.com/liu6x6/WebDriverAgent]
-
+[English](README.md)
+本项目灵感来自 scrcpy
+一个非常轻量的 iOS👌🏻64 player. 类似于 QuickTime. 使用 ffmpeg 和 SDL2. 支持 Mac/linux/Windows,需要和(WebDriverAgent)[https://github.com/liu6x6/WebDriverAgent]一起使用
 there is a h264 stream server on port 10001. 
 
 
-# how to use
+# 使用流程
 ```
-# you need have a tcp h264 stream on you iOS devices
+# 需要首先启动 WebdriverAgent
 ./iproxy 10001 10001
 ./iosplayer -p 10001  # play the tcp stream on 10001
 ```
