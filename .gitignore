@@ -20,3 +20,6 @@ src/Makefile.in
 src/.deps/iosplayer-main.Po
 iosplayer-main.o
 iosplayer
+configure~
+autom4te.cache/output.3
+autom4te.cache/traces.3

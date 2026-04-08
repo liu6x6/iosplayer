@@ -8,6 +8,12 @@ need wotk with [WebDriverAgent](https://github.com/liu6x6/WebDriverAgent)
 
 there is a h264 stream server on port 10001. 
 
+# install make
+```
+brew install autoconf
+brew install automake 
+brew install pkg-config automake autoconf libtool ffmpeg sdl3
+```
 
 # how to use
 ```
