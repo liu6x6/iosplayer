@@ -1,7 +1,11 @@
 #include "player.h"
-#include "mux.h"
 #include "cli.h"
+
+#ifdef PLAYER_CLIENT
+#include "net_client.h" // For sending control commands
+#else
 #include "http_client.h"
+#endif
 
 #include <stdio.h>
 #include <libavcodec/avcodec.h>
@@ -16,6 +20,19 @@
 
 #define SWIPE_THRESHOLD 10.0 // Min distance to be considered a swipe
 
+// This function is now generic and can read from any fd
+static int read_packet(void *opaque, uint8_t *buf, int buf_size) {
+    int fd = (intptr_t)opaque;
+    int ret = read(fd, buf, buf_size);
+    if (ret < 0) {
+        return AVERROR_EOF;
+    }
+    if (ret == 0) {
+        return AVERROR_EOF;
+    }
+    return ret;
+}
+
 void check_outPut(char* out_file, FILE** file) {
     if (strlen(out_file) > 0) {
         *file = fopen(out_file, "wb");
@@ -27,14 +44,14 @@ void check_outPut(char* out_file, FILE** file) {
     }
 }
 
-void run_player(int mux_fd) {
+void run_player(int data_fd) {
     FILE *outputF = NULL;
     check_outPut(g_out_file, &outputF);
 
     AVFormatContext *pFormatCtx = avformat_alloc_context();
     if (!pFormatCtx) {
         printf("Couldn't allocate format context.\n");
-        close(mux_fd);
+        close(data_fd);
         return;
     }
 
@@ -44,20 +61,20 @@ void run_player(int mux_fd) {
     if (!avio_ctx_buffer) {
         printf("Couldn't allocate avio buffer.\n");
         avformat_free_context(pFormatCtx);
-        close(mux_fd);
+        close(data_fd);
         return;
     }
 
     AVIOContext *avio_ctx = avio_alloc_context(
         avio_ctx_buffer, avio_ctx_buffer_size,
-        0, (void*)(intptr_t)mux_fd,
-        &read_packet_usbmuxd, NULL, NULL
+        0, (void*)(intptr_t)data_fd,
+        &read_packet, NULL, NULL
     );
     if (!avio_ctx) {
         printf("Couldn't allocate avio context.\n");
         av_free(avio_ctx_buffer);
         avformat_free_context(pFormatCtx);
-        close(mux_fd);
+        close(data_fd);
         return;
     }
     pFormatCtx->pb = avio_ctx;
@@ -67,14 +84,14 @@ void run_player(int mux_fd) {
         av_free(avio_ctx->buffer);
         avio_context_free(&avio_ctx);
         avformat_free_context(pFormatCtx);
-        close(mux_fd);
+        close(data_fd);
         return;
     }
 
     if (avformat_find_stream_info(pFormatCtx, NULL) < 0) {
         printf("Couldn't find stream information.\n");
         avformat_close_input(&pFormatCtx);
-        close(mux_fd);
+        close(data_fd);
         return;
     }
 
@@ -88,7 +105,7 @@ void run_player(int mux_fd) {
     if (videoStream == -1) {
         printf("Didn't find a video stream.\n");
         avformat_close_input(&pFormatCtx);
-        close(mux_fd);
+        close(data_fd);
         return;
     }
 
@@ -97,7 +114,7 @@ void run_player(int mux_fd) {
     if (!pCodec) {
         printf("Unsupported codec!\n");
         avformat_close_input(&pFormatCtx);
-        close(mux_fd);
+        close(data_fd);
         return;
     }
 
@@ -107,7 +124,7 @@ void run_player(int mux_fd) {
         printf("Could not open codec.\n");
         avcodec_free_context(&pCodecCtx);
         avformat_close_input(&pFormatCtx);
-        close(mux_fd);
+        close(data_fd);
         return;
     }
 
@@ -116,7 +133,7 @@ void run_player(int mux_fd) {
 
     SDL_Init(SDL_INIT_VIDEO);
     SDL_StartTextInput();
-    SDL_Window *screen = SDL_CreateWindow("iOS iPhone", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, pCodecCtx->width / 2, pCodecCtx->height / 2, 0);
+    SDL_Window *screen = SDL_CreateWindow("iOS Player", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, pCodecCtx->width / 2, pCodecCtx->height / 2, 0);
     SDL_Renderer *renderer = SDL_CreateRenderer(screen, -1, 0);
     SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_YV12, SDL_TEXTUREACCESS_STREAMING, pCodecCtx->width, pCodecCtx->height);
 
@@ -176,29 +193,50 @@ void run_player(int mux_fd) {
 
                 double distance = fabs(end_x - start_x) + fabs(end_y - start_y);
 
+#ifdef PLAYER_CLIENT
+                char command_buffer[256];
                 if (distance < SWIPE_THRESHOLD) {
-                    printf("Tap at (%.2f, %.2f)\n", end_x, end_y);
+                    snprintf(command_buffer, sizeof(command_buffer), "TAP %.2f %.2f", end_x, end_y);
+                    client_send_data(data_fd, (uint8_t*)command_buffer, strlen(command_buffer));
+                } else {
+                    Uint32 end_time = event.button.timestamp;
+                    double duration = (double)(end_time - start_time) / 1000.0;
+                    snprintf(command_buffer, sizeof(command_buffer), "SWIPE %.2f %.2f %.2f %.2f %.2f", start_x, start_y, end_x, end_y, duration);
+                    client_send_data(data_fd, (uint8_t*)command_buffer, strlen(command_buffer));
+                }
+#else
+                if (distance < SWIPE_THRESHOLD) {
                     send_tap_request(end_x, end_y);
                 } else {
                     Uint32 end_time = event.button.timestamp;
                     double duration = (double)(end_time - start_time) / 1000.0;
-                    printf("Swipe from (%.2f, %.2f) to (%.2f, %.2f) in %.2fs\n", start_x, start_y, end_x, end_y, duration);
                     send_swipe_request(start_x, start_y, end_x, end_y, duration);
                 }
+#endif
             }
             if (event.type == SDL_TEXTINPUT) {
-                printf("Text input: %s\n", event.text.text);
+#ifdef PLAYER_CLIENT
+                char command_buffer[256];
+                snprintf(command_buffer, sizeof(command_buffer), "KEYS %s", event.text.text);
+                client_send_data(data_fd, (uint8_t*)command_buffer, strlen(command_buffer));
+#else
                 send_keys_request(event.text.text);
+#endif
             }
             if (event.type == SDL_KEYDOWN) {
-                switch (event.key.keysym.sym) {
-                    case SDLK_RETURN:
-                        send_keys_request("\n");
-                        break;
-                    case SDLK_BACKSPACE:
-                        send_keys_request("\b");
-                        break;
+#ifdef PLAYER_CLIENT
+                if (event.key.keysym.sym == SDLK_RETURN) {
+                    client_send_data(data_fd, (uint8_t*)"KEYS \n", 6);
+                } else if (event.key.keysym.sym == SDLK_BACKSPACE) {
+                    client_send_data(data_fd, (uint8_t*)"KEYS \b", 6);
                 }
+#else
+                if (event.key.keysym.sym == SDLK_RETURN) {
+                    send_keys_request("\n");
+                } else if (event.key.keysym.sym == SDLK_BACKSPACE) {
+                    send_keys_request("\b");
+                }
+#endif
             }
         }
     }
@@ -208,7 +246,7 @@ void run_player(int mux_fd) {
     }
 
     SDL_StopTextInput();
-    close(mux_fd);
+    close(data_fd);
     av_frame_free(&pFrame);
     av_frame_free(&pFrameYUV);
     av_packet_free(&packet);

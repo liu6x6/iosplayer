@@ -4,23 +4,26 @@
 
 ## Overview
 
-Inspired by `scrcpy`, `iosplayer` is a lightweight player designed to stream an iOS device's screen to a computer using FFmpeg and SDL2. It supports remote control functionalities like tap, swipe, and keyboard input by sending HTTP requests to a running WebDriverAgent instance on the device.
+This project provides tools to stream an iOS device's screen and control it remotely. It consists of three main programs:
 
-This project automatically detects and connects to the iOS device, removing the need for manual proxying.
+- **`iosplayer`**: A standalone application for mirroring and controlling the device on the same machine.
+- **`playerServer`**: A server application that connects to the iOS device, grabs the video stream, and forwards it over TCP. It also receives control commands from a client and sends them to the device's WebDriverAgent.
+- **`playerClient`**: A client application that connects to `playerServer` to receive the video stream and display it. It captures user input (mouse, keyboard) and sends it back to the server for execution.
 
 ## Features
 
-- **Screen Mirroring**: Streams the device screen over USB.
-- **Auto-Connection**: Automatically finds the connected iOS device and establishes a connection.
+- **Screen Mirroring**: Streams the device screen over USB or TCP.
+- **Auto-Connection**: The standalone player and server automatically find the connected iOS device.
+- **Client/Server Architecture**: Allows running the player on a separate machine from the one connected to the device.
 - **Remote Control**:
-    - **Tap**: Click on the video window to simulate a tap on the device.
-    - **Swipe/Pan**: Click, drag, and release to simulate a swipe gesture.
-    - **Keyboard Input**: Type directly into the window to send keystrokes to the device. Supports regular text, backspace, and enter.
+    - **Tap**: Click on the video window to simulate a tap.
+    - **Swipe/Pan**: Click, drag, and release to simulate a swipe.
+    - **Keyboard Input**: Type directly into the window to send keystrokes.
 
 ## Prerequisites
 
-1.  **WebDriverAgent**: A running WebDriverAgent server on the iOS device to handle control commands. The player assumes it's accessible at `http://localhost:8100`.
-2.  **usbmuxd**: The `usbmuxd` daemon must be running on the host machine to handle USB communication with the device.
+1.  **WebDriverAgent**: A running WebDriverAgent server on the iOS device. Required for `iosplayer` and `playerServer`.
+2.  **usbmuxd**: The `usbmuxd` daemon must be running on the host machine for USB communication.
 
 ## Build Instructions
 
@@ -39,8 +42,6 @@ brew install ffmpeg sdl2 libusbmuxd curl
 
 ### Compiling
 
-Once the dependencies are installed, you can build the project using the standard autotools workflow:
-
 ```bash
 ./autogen.sh
 ./configure
@@ -49,21 +50,30 @@ make
 
 ## Usage
 
-After a successful build, simply run the executable:
+### Standalone Mode
+
+Run `iosplayer` for an all-in-one solution on the machine connected to the device.
 
 ```bash
 ./src/iosplayer
 ```
 
-The application will automatically connect to the first available iOS device on the default port (10001).
+### Client/Server Mode
+
+**1. Start the Server:**
+On the machine connected to the iOS device, run `playerServer`.
+```bash
+./src/playerServer
+```
+
+**2. Start the Client:**
+On another machine, run `playerClient`. It will connect to the server at `127.0.0.1:12345` by default. You can use command-line options to specify a different IP.
+```bash
+./src/playerClient
+```
 
 ### Command-line Options
 
-- `-p, --port <port_number>`: Specify a custom device port to connect to.
-  ```bash
-  ./src/iosplayer -p 12345
-  ```
-- `-o, --out <filename>`: Save the incoming H.264 stream to a file.
-  ```bash
-  ./src/iosplayer -o stream.h264
-  ```
+- `-p, --port <port>`: (For `iosplayer`) Specify a custom device port.
+- `-o, --out <filename>`: (For `iosplayer`) Save the stream to a file.
+- *Client-specific options can be added to `cli.c` to specify server IP and port.*
