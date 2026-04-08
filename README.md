@@ -1,34 +1,69 @@
 # iosplayer
+
 [中文文档](README_CN.md)
 
-this project get inspiration from scrcpy.
+## Overview
 
-a small stream player using ffmpeg and SDL2, which i use it to test the iOS h264 stream. support Mac/linux/windows.
-need wotk with [WebDriverAgent](https://github.com/liu6x6/WebDriverAgent)
+Inspired by `scrcpy`, `iosplayer` is a lightweight player designed to stream an iOS device's screen to a computer using FFmpeg and SDL2. It supports remote control functionalities like tap, swipe, and keyboard input by sending HTTP requests to a running WebDriverAgent instance on the device.
 
-there is a h264 stream server on port 10001. 
+This project automatically detects and connects to the iOS device, removing the need for manual proxying.
 
+## Features
 
-# how to use
+- **Screen Mirroring**: Streams the device screen over USB.
+- **Auto-Connection**: Automatically finds the connected iOS device and establishes a connection.
+- **Remote Control**:
+    - **Tap**: Click on the video window to simulate a tap on the device.
+    - **Swipe/Pan**: Click, drag, and release to simulate a swipe gesture.
+    - **Keyboard Input**: Type directly into the window to send keystrokes to the device. Supports regular text, backspace, and enter.
+
+## Prerequisites
+
+1.  **WebDriverAgent**: A running WebDriverAgent server on the iOS device to handle control commands. The player assumes it's accessible at `http://localhost:8100`.
+2.  **usbmuxd**: The `usbmuxd` daemon must be running on the host machine to handle USB communication with the device.
+
+## Build Instructions
+
+### Dependencies
+
+You need the development libraries for:
+- FFmpeg (libavformat, libavcodec, libavutil, libswscale)
+- SDL2
+- libusbmuxd (version 2.0 or higher)
+- libcurl
+
+On macOS, you can install them using Homebrew:
+```bash
+brew install ffmpeg sdl2 libusbmuxd curl
 ```
-# you need have a tcp h264 stream on you iOS devices
-./iproxy 10001 10001
-./iosplayer -p 10001  # play the tcp stream on 10001
+
+### Compiling
+
+Once the dependencies are installed, you can build the project using the standard autotools workflow:
+
+```bash
+./autogen.sh
+./configure
+make
 ```
 
-# build
-## mac & linux
-* run ./autogen.sh
-* and then make && make install
+## Usage
 
-## windows
-* install msys2 first
-* pacman -S mingw-w64-ucrt-x86_64-ffmpeg
+After a successful build, simply run the executable:
 
-
-## use gcc to build
+```bash
+./src/iosplayer
 ```
-gcc -o iosplayer iosplayer.c \
-    `pkg-config --cflags --libs libavformat libavcodec libavutil libswscale sdl2`
 
-```
+The application will automatically connect to the first available iOS device on the default port (10001).
+
+### Command-line Options
+
+- `-p, --port <port_number>`: Specify a custom device port to connect to.
+  ```bash
+  ./src/iosplayer -p 12345
+  ```
+- `-o, --out <filename>`: Save the incoming H.264 stream to a file.
+  ```bash
+  ./src/iosplayer -o stream.h264
+  ```
