@@ -7,7 +7,7 @@ PKG_PROG_PKG_CONFIG
 
 # Check for required libraries
 PKG_CHECK_MODULES([FFMPEG], [libavformat libavcodec libavutil libswscale])
-PKG_CHECK_MODULES([SDL2], [sdl2])
+PKG_CHECK_MODULES([SDL3], [sdl3])
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT

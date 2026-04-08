@@ -2,7 +2,7 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <libavutil/opt.h>
 #include <libavutil/imgutils.h>
 #include <string.h>
@@ -118,12 +118,10 @@ int main(int argc, char *argv[]) {
     // SDL setup
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window *screen = SDL_CreateWindow("iOS iPhone",
-                                          SDL_WINDOWPOS_UNDEFINED,
-                                          SDL_WINDOWPOS_UNDEFINED,
                                           pCodecCtx->width / 2,
                                           pCodecCtx->height / 2,
                                           0);
-    SDL_Renderer *renderer = SDL_CreateRenderer(screen, -1, 0);
+    SDL_Renderer *renderer = SDL_CreateRenderer(screen, NULL, 0);
     SDL_Texture *texture = SDL_CreateTexture(renderer,
                                              SDL_PIXELFORMAT_YV12,
                                              SDL_TEXTUREACCESS_STREAMING,
@@ -173,7 +171,7 @@ int main(int argc, char *argv[]) {
                                              pFrameYUV->data[2], pFrameYUV->linesize[2]);
 
                         SDL_RenderClear(renderer);
-                        SDL_RenderCopy(renderer, texture, NULL, NULL);
+                        SDL_RenderTexture(renderer, texture, NULL, NULL);
                         SDL_RenderPresent(renderer);
                     }
                 }
